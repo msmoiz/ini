@@ -23,6 +23,10 @@ impl<'a> Parser<'a> {
 
         while let Some(token) = self.lexer.peek() {
             match token {
+                Token::Newline => {
+                    self.lexer.next();
+                    continue;
+                }
                 Token::LeftBracket => {
                     let name = self.section()?;
                     ini.add_section(&name);
@@ -40,24 +44,47 @@ impl<'a> Parser<'a> {
     }
 
     fn section(&mut self) -> Result<String> {
-        if let (Some(Token::LeftBracket), Some(Token::String(name)), Some(Token::RightBracket)) =
-            (self.lexer.next(), self.lexer.next(), self.lexer.next())
-        {
-            return Ok(name);
-        };
-        Err(Error::Parse)
+        let left_br = self.lexer.next();
+        let name = self.lexer.next();
+        let right_br = self.lexer.next();
+        let newline = self.lexer.next();
+        match (left_br, name, right_br, newline) {
+            (
+                Some(Token::LeftBracket),
+                Some(Token::String(name)),
+                Some(Token::RightBracket),
+                Some(Token::Newline),
+            )
+            | (
+                Some(Token::LeftBracket),
+                Some(Token::String(name)),
+                Some(Token::RightBracket),
+                None,
+            ) => Ok(name),
+            _ => Err(Error::Parse),
+        }
     }
 
     fn key(&mut self) -> Result<(String, String)> {
-        if let (Some(Token::String(name)), Some(Token::Equal), Some(Token::String(value))) =
-            (self.lexer.next(), self.lexer.next(), self.lexer.next())
-        {
-            if name.is_empty() {
-                return Err(Error::Parse);
+        let name = self.lexer.next();
+        let equal = self.lexer.next();
+        let value = self.lexer.next();
+        let newline = self.lexer.next();
+        match (name, equal, value, newline) {
+            (
+                Some(Token::String(name)),
+                Some(Token::Equal),
+                Some(Token::String(value)),
+                Some(Token::Newline),
+            )
+            | (Some(Token::String(name)), Some(Token::Equal), Some(Token::String(value)), None) => {
+                if name.is_empty() {
+                    return Err(Error::Parse);
+                }
+                Ok((name, value))
             }
-            return Ok((name, value));
+            _ => Err(Error::Parse),
         }
-        Err(Error::Parse)
     }
 }
 
@@ -117,5 +144,40 @@ mod tests {
         expected.add_section("bar");
         expected.add_section("baz");
         assert_eq!(ini, Ok(expected));
+    }
+
+    #[test]
+    fn keys_on_same_line() {
+        let text = "bar=baz qux=quux";
+        let ini = Parser::from_str(text);
+        assert!(ini.is_err());
+    }
+
+    #[test]
+    fn sections_on_same_line() {
+        let text = "[foo] [bar]";
+        let ini = Parser::from_str(text);
+        assert!(ini.is_err());
+    }
+
+    #[test]
+    fn section_key_on_same_line() {
+        let text = "[foo] bar=baz";
+        let ini = Parser::from_str(text);
+        assert!(ini.is_err());
+    }
+
+    #[test]
+    fn key_split_across_line() {
+        let text = "bar=\nbaz";
+        let ini = Parser::from_str(text);
+        assert!(ini.is_err());
+    }
+
+    #[test]
+    fn section_split_across_line() {
+        let text = "[foo\n]";
+        let ini = Parser::from_str(text);
+        assert!(ini.is_err());
     }
 }

@@ -3,6 +3,7 @@ pub enum Token {
     LeftBracket,
     RightBracket,
     Equal,
+    Newline,
     String(String),
 }
 
@@ -21,9 +22,8 @@ impl<'a> Lexer<'a> {
 
         self.skip_whitespace();
 
-        while let Some(len) = self.scan_comment() {
+        if let Some(len) = self.scan_comment() {
             self.pos += len;
-            self.skip_whitespace();
         }
 
         if self.pos >= self.text.len() {
@@ -45,6 +45,11 @@ impl<'a> Lexer<'a> {
             return Some(Equal);
         }
 
+        if let Some(len) = self.scan_newline() {
+            self.pos += len;
+            return Some(Newline);
+        }
+
         let len = self.scan_string();
         {
             let string = &self.text[self.pos..self.pos + len];
@@ -62,8 +67,7 @@ impl<'a> Lexer<'a> {
 
     fn skip_whitespace(&mut self) {
         let bytes = self.text.as_bytes();
-        while self.pos < self.text.len() && matches!(bytes[self.pos], b' ' | b'\t' | b'\n' | b'\r')
-        {
+        while self.pos < self.text.len() && matches!(bytes[self.pos], b' ' | b'\t') {
             self.pos += 1;
         }
     }
@@ -86,6 +90,18 @@ impl<'a> Lexer<'a> {
         current == b'='
     }
 
+    fn scan_newline(&self) -> Option<usize> {
+        assert!(self.pos < self.text.len());
+        let current = self.text.as_bytes()[self.pos];
+        if current == b'\n' {
+            Some(1)
+        } else if self.text[self.pos..].starts_with("\r\n") {
+            Some(2)
+        } else {
+            None
+        }
+    }
+
     fn scan_comment(&self) -> Option<usize> {
         if self.pos >= self.text.len() {
             return None;
@@ -95,7 +111,12 @@ impl<'a> Lexer<'a> {
         if current == b';' {
             let mut ix = self.pos;
             let mut len = 0;
-            while ix < self.text.len() && bytes[ix] != b'\n' {
+            while ix < self.text.len() {
+                if bytes[ix] == b'\n'
+                    || (bytes[ix] == b'\r' && ix + 1 < self.text.len() && bytes[ix + 1] == b'\n')
+                {
+                    break;
+                }
                 len += 1;
                 ix += 1;
             }
@@ -167,6 +188,21 @@ mod tests {
     }
 
     #[test]
+    fn newline() {
+        let text = "\n";
+        let token = Lexer::new(text).next();
+        assert_eq!(token, Some(Newline));
+    }
+
+    #[test]
+    fn newline_win() {
+        let text = "\r\nfoo";
+        let mut lexer = Lexer::new(text);
+        assert_eq!(lexer.next(), Some(Newline));
+        assert_eq!(lexer.next(), Some(String("foo".into())));
+    }
+
+    #[test]
     fn string() {
         let text = "hello";
         let token = Lexer::new(text).next();
@@ -219,11 +255,22 @@ mod tests {
         bar=baz ; comment
         ";
         let mut lexer = Lexer::new(text);
+        assert_eq!(lexer.next(), Some(Newline));
         assert_eq!(lexer.next(), Some(LeftBracket));
         assert_eq!(lexer.next(), Some(String("foo".into())));
         assert_eq!(lexer.next(), Some(RightBracket));
+        assert_eq!(lexer.next(), Some(Newline));
         assert_eq!(lexer.next(), Some(String("bar".into())));
         assert_eq!(lexer.next(), Some(Equal));
         assert_eq!(lexer.next(), Some(String("baz".into())));
+        assert_eq!(lexer.next(), Some(Newline));
+    }
+
+    #[test]
+    fn comment_win() {
+        let text = "; comment\r\nfoo";
+        let mut lexer = Lexer::new(text);
+        assert_eq!(lexer.next(), Some(Newline));
+        assert_eq!(lexer.next(), Some(String("foo".into())));
     }
 }
