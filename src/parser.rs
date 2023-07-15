@@ -30,7 +30,7 @@ impl<'a> Parser<'a> {
                 }
                 Token::String(_) => {
                     if let Some((name, value)) = self.key() {
-                        ini.section_mut(&cur_section).insert_key(name, value);
+                        ini[&cur_section].insert(name, value);
                     }
                 }
                 _ => todo!(),
@@ -79,9 +79,7 @@ mod tests {
         let text = "bar=baz";
         let ini = Parser::from_str(text);
         let mut expected = Ini::new();
-        expected
-            .section_mut("")
-            .insert_key("bar".into(), "baz".into());
+        expected[""].insert("bar".into(), "baz".into());
         assert_eq!(ini, expected);
     }
 
@@ -103,9 +101,7 @@ mod tests {
         let ini = Parser::from_str(text);
         let mut expected = Ini::new();
         expected.add_section("foo");
-        expected
-            .section_mut("foo")
-            .insert_key("bar".into(), "baz".into());
+        expected["foo"].insert("bar".into(), "baz".into());
         assert_eq!(ini, expected);
     }
 
