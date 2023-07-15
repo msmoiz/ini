@@ -108,7 +108,7 @@ impl<'a> Lexer<'a> {
         }
         let bytes = self.text.as_bytes();
         let current = bytes[self.pos];
-        if current == b';' {
+        if current == b';' || current == b'#' {
             let mut ix = self.pos;
             let mut len = 0;
             while ix < self.text.len() {
@@ -269,6 +269,14 @@ mod tests {
     #[test]
     fn comment_win() {
         let text = "; comment\r\nfoo";
+        let mut lexer = Lexer::new(text);
+        assert_eq!(lexer.next(), Some(Newline));
+        assert_eq!(lexer.next(), Some(String("foo".into())));
+    }
+
+    #[test]
+    fn comment_unix_style() {
+        let text = "# comment\nfoo";
         let mut lexer = Lexer::new(text);
         assert_eq!(lexer.next(), Some(Newline));
         assert_eq!(lexer.next(), Some(String("foo".into())));
