@@ -1,3 +1,4 @@
+mod error;
 mod ini;
 mod lexer;
 mod parser;

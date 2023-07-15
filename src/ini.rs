@@ -5,6 +5,8 @@ use std::{
 
 use crate::parser::Parser;
 
+use crate::error::Result;
+
 /// INI section.
 #[derive(Debug, PartialEq, Default)]
 pub struct Section {
@@ -63,7 +65,7 @@ impl Ini {
     }
 
     /// Parse an Ini from an input string.
-    pub fn from_str(text: &str) -> Ini {
+    pub fn from_str(text: &str) -> Result<Ini> {
         Parser::from_str(text)
     }
 
