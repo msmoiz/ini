@@ -21,10 +21,10 @@ impl<'a> Parser<'a> {
         let mut ini = Ini::new();
         let mut cur_section = "".to_string();
 
-        while let Some(token) = self.lexer.peek() {
+        while let Some(token) = self.lexer.peek()? {
             match token {
                 Token::Newline => {
-                    self.lexer.next();
+                    self.lexer.next()?;
                     continue;
                 }
                 Token::LeftBracket => {
@@ -44,10 +44,10 @@ impl<'a> Parser<'a> {
     }
 
     fn section(&mut self) -> Result<String> {
-        let left_br = self.lexer.next();
-        let name = self.lexer.next();
-        let right_br = self.lexer.next();
-        let newline = self.lexer.next();
+        let left_br = self.lexer.next()?;
+        let name = self.lexer.next()?;
+        let right_br = self.lexer.next()?;
+        let newline = self.lexer.next()?;
         match (left_br, name, right_br, newline) {
             (
                 Some(Token::LeftBracket),
@@ -66,10 +66,10 @@ impl<'a> Parser<'a> {
     }
 
     fn key(&mut self) -> Result<(String, String)> {
-        let name = self.lexer.next();
-        let equal = self.lexer.next();
-        let value = self.lexer.next();
-        let newline = self.lexer.next();
+        let name = self.lexer.next()?;
+        let equal = self.lexer.next()?;
+        let value = self.lexer.next()?;
+        let newline = self.lexer.next()?;
         match (name, equal, value, newline) {
             (
                 Some(Token::String(name)),
@@ -179,5 +179,28 @@ mod tests {
         let text = "[foo\n]";
         let ini = Parser::from_str(text);
         assert!(ini.is_err());
+    }
+
+    #[test]
+    fn section_quoted_name() {
+        let text = r#"["foo bar"]"#;
+        let ini = Parser::from_str(text);
+        let mut expected = Ini::new();
+        expected.add_section("foo bar");
+        assert_eq!(ini, Ok(expected));
+    }
+
+    #[test]
+    fn key_quoted_name() {
+        let text = r#""foo bar"=baz"#;
+        let ini = Parser::from_str(text).unwrap();
+        assert_eq!(ini[""]["foo bar"], "baz");
+    }
+
+    #[test]
+    fn key_quoted_value() {
+        let text = r#"foo="bar baz""#;
+        let ini = Parser::from_str(text).unwrap();
+        assert_eq!(ini[""]["foo"], "bar baz");
     }
 }

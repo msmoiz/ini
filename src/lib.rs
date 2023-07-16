@@ -46,14 +46,25 @@
 //! foo=bar buz=bux # not ok
 //! ```
 //!
-//! Names and values may be composed of ASCII alphanumeric characters and the
-//! following symbols: `_./`. All other characters are disallowed. Internal
-//! whitespace is disallowed as well.
+//! Names and values can be bare strings or quoted strings.
 //!
-//! ```ini
-//! foo=bar # ok
-//! foo bar = baz bux # not ok
-//! ```
+//! * Bare strings may be composed of ASCII alphanumeric characters and the
+//!   following symbols: `_.-`. All other characters are disallowed. Internal
+//!   whitespace is disallowed as well.
+//!
+//!   ```ini
+//!   foo=bar # ok
+//!   foo bar = baz bux # not ok
+//!   ```
+//!
+//! * Quoted strings begin and end with double quotes (`"`) and can contain any
+//!   ASCII character including internal whitespace. Internal quotes must be
+//!   escaped.
+//!
+//!   ```ini
+//!   foo="bar baz"
+//!   buz="bax\"boo"
+//!   ```
 //!
 //! ## Sections
 //!
