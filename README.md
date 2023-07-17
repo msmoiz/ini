@@ -4,7 +4,7 @@ This is a simple library for working with INI files. For more information on
 usage and supported syntax, see the [crate documentation](/src/lib.rs).
 
 ```ini
-use crate::ini::Ini;
+use ini::Ini;
 
 let ini = Ini::from_str("
     [greeting]
